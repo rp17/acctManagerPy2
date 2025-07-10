@@ -1,180 +1,166 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, simpledialog
-from decimal import Decimal
-from typing import Any
+from tkinter import ttk, messagebox
+from decimal import Decimal, ROUND_HALF_EVEN, InvalidOperation
+from typing import Optional, Dict
+from enum import Enum
+from .tkinter_view import TkinterView
 
-from view.base_view import FrameView, SpringUtilities
-from account_model import ModelEvent, EventKind, AgentStatus
+class Currency(Enum):
+    DOLLAR = "USD"
+    EURO = "EUR"
+    YEN = "JPY"
 
+class AccountView(TkinterView):
+    exchange_rates: Dict[str, Decimal] = {
+        "USD": Decimal("1.0"),
+        "EUR": Decimal("0.79"),
+        "JPY": Decimal("94.1")
+    }
+    reverse_rates: Dict[str, Decimal] = {
+        "USD": Decimal("1.0"),
+        "EUR": Decimal("1") / Decimal("0.79"),
+        "JPY": Decimal("1") / Decimal("94.1")
+    }
+    currency_symbols: Dict[str, str] = {
+        "USD": "$",
+        "EUR": "€",
+        "JPY": "¥"
+    }
 
-class AccountView(FrameView):
-    """MANDATORY: GUI for a single account"""
-    
-    def __init__(self, parent: tk.Misc, controller: Any, **kwargs):
-        super().__init__(parent, **kwargs)
+    def __init__(self, model, controller, currency_type: str = "USD"):
+        super().__init__(title="AccountView")
+        self._model = model
         self._controller = controller
-        self._controller.set_view(self)
-        
-        # CRITICAL: Build layout with ttk widgets only
-        self._build_ui()
-        self._update_display()
-    
-    def _build_ui(self) -> None:
-        """Build the user interface"""
-        # Configure grid weights for responsive layout
-        self.configure_grid_weights([0, 0, 0, 0, 1], [1, 1])
-        
-        # Account header
-        account = self._controller.get_model()
-        if account:
-            title_label = SpringUtilities.create_title_label(self, f"{account.name} ({account.account_id})")
-            title_label.grid(row=0, column=0, columnspan=2, pady=(8, 4), sticky="ew")
-        
-        # Balance display
-        self._balance_var = tk.StringVar()
-        balance_label = ttk.Label(self, textvariable=self._balance_var, style="Title.TLabel")
-        balance_label.grid(row=1, column=0, columnspan=2, pady=8, sticky="ew")
-        
-        # Action buttons
-        button_frame = ttk.Frame(self)
-        button_frame.grid(row=2, column=0, columnspan=2, sticky="ew", pady=4)
-        button_frame.grid_columnconfigure(0, weight=1)
-        button_frame.grid_columnconfigure(1, weight=1)
-        
-        deposit_btn = SpringUtilities.create_action_button(button_frame, "Deposit", self._on_deposit)
-        deposit_btn.grid(row=0, column=0, sticky="ew", padx=(0, 2))
-        
-        withdraw_btn = SpringUtilities.create_action_button(button_frame, "Withdraw", self._on_withdraw)
-        withdraw_btn.grid(row=0, column=1, sticky="ew", padx=(2, 0))
-        
-        # Agent control buttons
-        agent_frame = ttk.Frame(self)
-        agent_frame.grid(row=3, column=0, columnspan=2, sticky="ew", pady=4)
-        agent_frame.grid_columnconfigure(0, weight=1)
-        agent_frame.grid_columnconfigure(1, weight=1)
-        
-        start_agents_btn = ttk.Button(agent_frame, text="Start Agents", command=self._on_start_agents)
-        start_agents_btn.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(4, 0))
-        
-        pause_btn = ttk.Button(agent_frame, text="Pause All", command=self._on_pause_agents)
-        pause_btn.grid(row=1, column=0, sticky="ew", padx=(0, 2), pady=4)
-        
-        resume_btn = ttk.Button(agent_frame, text="Resume All", command=self._on_resume_agents)
-        resume_btn.grid(row=1, column=1, sticky="ew", padx=(2, 0), pady=4)
-        
-        stop_btn = ttk.Button(agent_frame, text="Stop All", command=self._on_stop_agents)
-        stop_btn.grid(row=2, column=0, columnspan=2, sticky="ew", pady=4)
-        
-        # Status display
-        self._status_var = tk.StringVar()
-        status_label = ttk.Label(self, textvariable=self._status_var, style="Status.TLabel")
-        status_label.grid(row=4, column=0, columnspan=2, pady=4, sticky="ew")
-        
-        # Separator
-        separator = SpringUtilities.create_separator(self)
-        separator.grid(row=5, column=0, columnspan=2, sticky="ew", pady=8)
-    
-    def _update_display(self) -> None:
-        """Update the display with current account information"""
-        account = self._controller.get_model()
-        if account:
-            self._balance_var.set(f"Balance: ${account.balance:.2f}")
-            
-            # Update status
-            agent_status = self._controller.get_agent_status()
-            status_text = f"Agents: {agent_status['deposit_agents']} deposit, {agent_status['withdraw_agents']} withdraw"
-            if agent_status['active_futures'] > 0:
-                status_text += f" ({agent_status['active_futures']} active)"
-            self._status_var.set(status_text)
-    
-    def update_from_model(self, event: ModelEvent) -> None:
-        """
-        MANDATORY: Thread-safe model update handling
-        CRITICAL: Uses schedule_update for thread safety
-        """
-        if event.kind == EventKind.BALANCE_UPDATE:
-            self.schedule_update(self._update_balance_display, event.balance)
-        elif event.kind == EventKind.AGENT_STATUS_UPDATE:
-            self.schedule_update(self._update_agent_status, event.agent_status)
-        elif event.kind == EventKind.AMOUNT_TRANSFERRED_UPDATE:
-            self.schedule_update(self._update_transfer_status, event.balance)
-    
-    def _update_balance_display(self, balance: Decimal) -> None:
-        """Update balance display (called on main thread)"""
-        self._balance_var.set(f"Balance: ${balance:.2f}")
-    
-    def _update_agent_status(self, status: AgentStatus) -> None:
-        """Update agent status display (called on main thread)"""
-        self._update_display()
-    
-    def _update_transfer_status(self, amount: Decimal) -> None:
-        """Update transfer status display (called on main thread)"""
-        self._update_display()
-    
-    def _ask_amount(self, title: str) -> Decimal:
-        """Ask user for amount input"""
-        amount_str = simpledialog.askstring(title, "Enter amount:")
-        if not amount_str:
-            raise ValueError("Amount required")
-        
+        self.currency_type = Currency(currency_type)
+        self._balance_var = tk.StringVar(value="0.00")
+        self._amount_var = tk.StringVar(value="30.00")
+        symbol = self.currency_symbols[self.currency_type.value]
+        self.title(f"Account operations in {symbol}")
+        self._setup_gui()
+        self._center_window()
+        self.resizable(False, False)
+        self.protocol("WM_DELETE_WINDOW", self._on_closing)
+        self._register_with_model()
+
+    def _setup_gui(self):
+        # Title frame
+        self.label_frame = ttk.LabelFrame(self, text=self._get_account_name())
+        self.label_frame.pack(fill="both", expand=True, padx=10, pady=10)
+        # Form panel
+        self.form_panel = ttk.Frame(self.label_frame)
+        self.form_panel.pack(fill="x", padx=10, pady=10)
+        # Balance
+        self.balance_label = ttk.Label(self.form_panel, text="Balance:")
+        self.balance_field = ttk.Entry(self.form_panel, textvariable=self._balance_var, state="readonly", width=20)
+        # Amount
+        self.amount_label = ttk.Label(self.form_panel, text="Amount:")
+        self.amount_entry = ttk.Entry(self.form_panel, textvariable=self._amount_var, width=20)
+        # Layout
+        self.balance_label.grid(row=0, column=0, sticky="e", padx=5, pady=3)
+        self.balance_field.grid(row=0, column=1, sticky="w", padx=5, pady=3)
+        self.amount_label.grid(row=1, column=0, sticky="e", padx=5, pady=3)
+        self.amount_entry.grid(row=1, column=1, sticky="w", padx=5, pady=3)
+        # Button panel
+        self.button_panel = ttk.Frame(self.label_frame)
+        self.button_panel.pack(fill="x", padx=10, pady=10)
+        self.deposit_button = ttk.Button(self.button_panel, text="Deposit", command=self._on_deposit)
+        self.withdraw_button = ttk.Button(self.button_panel, text="Withdraw", command=self._on_withdraw)
+        self.deposit_button.grid(row=0, column=0, padx=5, pady=3)
+        self.withdraw_button.grid(row=0, column=1, padx=5, pady=3)
+        # Accessibility: Tab order
+        self.amount_entry.focus_set()
+        self.amount_entry.bind('<Return>', lambda e: self._on_deposit())
+        self.withdraw_button.bind('<Return>', lambda e: self._on_withdraw())
+
+    def _get_account_name(self):
+        if hasattr(self._model, 'name'):
+            return str(self._model.name)
+        return "Account"
+
+    def _center_window(self):
+        self.update_idletasks()
+        width = self.winfo_reqwidth()
+        height = self.winfo_reqheight()
+        screen_width = self.winfo_screenwidth()
+        screen_height = self.winfo_screenheight()
+        x = (screen_width // 2) - (width // 2)
+        y = (screen_height // 2) - (height // 2)
+        self.geometry(f"{width}x{height}+{x}+{y}")
+
+    def _register_with_model(self):
+        if hasattr(self._model, 'add_listener'):
+            self._model.add_listener(self.model_changed)
+
+    def unregister_with_model(self):
+        if hasattr(self._model, 'remove_listener'):
+            self._model.remove_listener(self.model_changed)
+
+    def get_model(self):
+        return self._model
+
+    def get_controller(self):
+        return self._controller
+
+    def model_changed(self, event):
+        # Thread-safe model update
+        event_kind = getattr(event, 'kind', None)
+        if event_kind and str(event_kind).endswith("BALANCE_UPDATE"):
+            balance = getattr(event, 'balance', None)
+            self._schedule_gui_update(self._update_balance_display, balance)
+
+    def _update_balance_display(self, balance):
         try:
-            amount = Decimal(amount_str)
+            display_balance = self._convert_to_display_currency(balance)
+            symbol = self.currency_symbols[self.currency_type.value]
+            self._balance_var.set(f"{symbol}{display_balance:,.2f}")
+        except Exception:
+            self._balance_var.set("0.00")
+
+    def _convert_to_display_currency(self, amount: Decimal) -> Decimal:
+        if self.currency_type != Currency.DOLLAR:
+            rate = self.exchange_rates[self.currency_type.value]
+            converted = amount * rate
+            return converted.quantize(Decimal('0.01'), rounding=ROUND_HALF_EVEN)
+        return amount
+
+    def _convert_to_usd(self, amount: Decimal) -> Decimal:
+        if self.currency_type != Currency.DOLLAR:
+            reverse_rate = self.reverse_rates[self.currency_type.value]
+            converted = amount * reverse_rate
+            return converted.quantize(Decimal('0.01'), rounding=ROUND_HALF_EVEN)
+        return amount
+
+    def get_amount(self) -> Optional[Decimal]:
+        try:
+            raw_amount = Decimal(self.amount_entry.get())
+            amount = self._convert_to_usd(raw_amount)
             if amount <= 0:
                 raise ValueError("Amount must be positive")
-            return amount
-        except (ValueError, TypeError):
-            raise ValueError("Invalid amount format")
-    
-    def _on_deposit(self) -> None:
-        """Handle deposit button click"""
-        try:
-            amount = self._ask_amount("Deposit")
-            self._controller.deposit(amount)
-        except Exception as e:
-            self.show_error(str(e))
-    
-    def _on_withdraw(self) -> None:
-        """Handle withdraw button click"""
-        try:
-            amount = self._ask_amount("Withdraw")
-            self._controller.withdraw(amount)
-        except Exception as e:
-            self.show_error(str(e))
-    
-    def _on_start_agents(self) -> None:
-        """Handle start agents button click"""
-        try:
-            # Start deposit and withdraw agents
-            self._controller.start_deposit_agent(Decimal('10.00'), 20)
-            self._controller.start_withdraw_agent(Decimal('5.00'), 15)
-            self.show_info("Agents started successfully")
-        except Exception as e:
-            self.show_error(f"Failed to start agents: {str(e)}")
-    
-    def _on_pause_agents(self) -> None:
-        """Handle pause agents button click"""
-        try:
-            self._controller.pause_all_agents()
-            self.show_info("All agents paused")
-        except Exception as e:
-            self.show_error(f"Failed to pause agents: {str(e)}")
-    
-    def _on_resume_agents(self) -> None:
-        """Handle resume agents button click"""
-        try:
-            self._controller.resume_all_agents()
-            self.show_info("All agents resumed")
-        except Exception as e:
-            self.show_error(f"Failed to resume agents: {str(e)}")
-    
-    def _on_stop_agents(self) -> None:
-        """Handle stop agents button click"""
-        try:
-            self._controller.stop_all_agents()
-            self.show_info("All agents stopped")
-        except Exception as e:
-            self.show_error(f"Failed to stop agents: {str(e)}")
-    
-    def refresh_display(self) -> None:
-        """Refresh the display manually"""
-        self._update_display() 
+            return amount.quantize(Decimal('0.01'), rounding=ROUND_HALF_EVEN)
+        except (ValueError, InvalidOperation):
+            messagebox.showerror("Input Error", "Amount field only accepts positive decimals")
+            self.amount_entry.delete(0, tk.END)
+            self.amount_entry.insert(0, "30.00")
+            return None
+
+    def _on_deposit(self):
+        amount = self.get_amount()
+        if amount and amount > 0:
+            try:
+                self.get_controller().operation("Deposit", amount)
+            except Exception as e:
+                messagebox.showerror("Operation Error", f"Deposit failed: {str(e)}")
+
+    def _on_withdraw(self):
+        amount = self.get_amount()
+        if amount and amount > 0:
+            try:
+                self.get_controller().operation("Withdraw", amount)
+            except Exception as e:
+                messagebox.showerror("Operation Error", f"Withdraw failed: {str(e)}")
+
+    def _on_closing(self):
+        self.unregister_with_model()
+        if hasattr(self._controller, 'set_view'):
+            self._controller.set_view(None)
+        self.destroy() 
