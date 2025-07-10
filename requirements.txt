@@ -1,0 +1,16 @@
+# Python Account Management System Requirements
+# Core dependencies for thread-safe financial operations
+
+# No external dependencies required - uses only Python standard library:
+# - decimal: For precise financial arithmetic
+# - threading: For thread-safe operations
+# - tkinter: For GUI integration (included with Python)
+# - unittest: For comprehensive testing
+# - time: For timing operations
+# - enum: For status enumerations
+# - abc: For abstract base classes
+# - typing: For type hints
+
+# Optional dependencies for enhanced functionality:
+# pytest>=7.0.0  # For advanced testing (optional)
+# mypy>=1.0.0    # For static type checking (optional) 
