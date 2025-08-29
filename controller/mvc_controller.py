@@ -4,11 +4,11 @@ from threading import RLock
 import tkinter as tk
 from decimal import Decimal
 from concurrent.futures import Future
-from account_model import (
+from model.account_model import (
     Account, ModelEvent, EventKind, AgentStatus, 
     OverdrawException, InterruptedException
 )
-from agent_system import (
+from model.agent_system import (
     DepositAgent, WithdrawAgent, AgentImpl, 
     create_deposit_agent, create_withdraw_agent
 )

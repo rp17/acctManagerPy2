@@ -3,14 +3,12 @@ import threading
 import time
 from decimal import Decimal
 from concurrent.futures import Future
-from agent_system import (
+from model.agent_system import (
     AgentImpl, DepositAgent, WithdrawAgent, TransferAgent, 
     AgentManager, create_deposit_agent, create_withdraw_agent, 
     create_transfer_agent, IAgentInterface
 )
-from account_model import (
-    Account, AgentStatus, OverdrawException, InterruptedException
-)
+from model.account_model import Account, AgentStatus, OverdrawException, InterruptedException
 
 
 class TestAgentSystem(unittest.TestCase):

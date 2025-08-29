@@ -3,7 +3,7 @@ from tkinter import ttk, messagebox
 from decimal import Decimal
 from typing import Any, Optional
 from abc import ABC, abstractmethod
-from account_model import ModelEvent, EventKind
+from model.account_model import ModelEvent, EventKind
 
 
 class View(ABC):

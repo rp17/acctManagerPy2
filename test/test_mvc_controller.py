@@ -5,16 +5,16 @@ from decimal import Decimal
 from concurrent.futures import Future
 from unittest.mock import Mock, MagicMock
 
-from mvc_controller import (
+from controller.mvc_controller import (
     Controller, AbstractController, AccountController, 
     AccountListController, AgentController, MainController,
     create_account_controller, create_account_list_controller,
     create_agent_controller, create_main_controller
 )
-from account_model import (
+from model.account_model import (
     Account, AgentStatus, OverdrawException, ModelEvent, EventKind
 )
-from agent_system import AgentImpl
+from model.agent_system import AgentImpl
 
 
 class MockView:
@@ -502,7 +502,7 @@ class TestControllerIntegration(unittest.TestCase):
         time.sleep(3.0)
         
         # Verify final state
-        self.assertEqual(new_account.get_model().balance, Decimal("2195.00"))  # 2000 + 500 - 100 - 200 + 30 - 10
+        self.assertEqual(new_account.get_model().balance, Decimal("2220.00"))  # 2000 + 500 - 100 - 200 + 30 - 10
         
         # Get system status
         status = self.controller.get_system_status()

@@ -10,7 +10,7 @@ class Currency(Enum):
     EURO = "EUR"
     YEN = "JPY"
 
-class AccountView(TkinterView):
+class AccountView(tk.Frame, TkinterView):
     exchange_rates: Dict[str, Decimal] = {
         "USD": Decimal("1.0"),
         "EUR": Decimal("0.79"),
@@ -27,8 +27,11 @@ class AccountView(TkinterView):
         "JPY": "¥"
     }
 
-    def __init__(self, model, controller, currency_type: str = "USD"):
-        super().__init__(title="AccountView")
+    def __init__(self, master, model, controller, *args, **kwargs):
+        super().__init__(master, *args, **kwargs)
+        # Optionally set the window title if master supports it
+        if hasattr(master, 'title'):
+            master.title("AccountView")
         self._model = model
         self._controller = controller
         self.currency_type = Currency(currency_type)
@@ -107,6 +110,10 @@ class AccountView(TkinterView):
         if event_kind and str(event_kind).endswith("BALANCE_UPDATE"):
             balance = getattr(event, 'balance', None)
             self._schedule_gui_update(self._update_balance_display, balance)
+
+    def update_from_model(self, event):
+        # Minimal implementation for interface compliance
+        pass
 
     def _update_balance_display(self, balance):
         try:

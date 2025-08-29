@@ -10,7 +10,7 @@ from typing import Optional, Any, Callable
 import weakref
 import gc
 
-from view import View, ModelListener
+from view.view import View, ModelListener
 
 
 class TkinterView(tk.Toplevel, View, ModelListener):

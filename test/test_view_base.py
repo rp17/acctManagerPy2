@@ -13,8 +13,11 @@ from typing import Any
 import weakref
 
 # Import our view components
-from view import View, ModelListener, ViewFactory
-from tkinter_view import TkinterView
+from view.base_view import View, FrameView, DialogView, SpringUtilities
+from view.account_view import AccountView
+from view.account_list_view import AccountListView
+from model.account_model import ModelEvent, EventKind, Account, AgentStatus
+from controller.mvc_controller import AccountController, AccountListController
 
 
 class MockModel:

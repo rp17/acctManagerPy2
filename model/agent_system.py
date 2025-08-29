@@ -7,7 +7,7 @@ import time
 import multiprocessing
 from typing import Optional, Any, List
 from enum import Enum
-from account_model import (
+from model.account_model import (
     Account, AbstractModel, ModelEvent, EventKind, 
     OverdrawException, InterruptedException, AgentStatus, IAgent
 )
@@ -201,6 +201,33 @@ class AgentImpl(AbstractModel, IAgentInterface):
         """Remove completed tasks from active list"""
         with cls._tasks_lock:
             cls._active_tasks = [task for task in cls._active_tasks if not task.done()]
+
+    @staticmethod
+    def shutdown_and_await_termination():
+        """
+        MANDATORY: Graceful shutdown of thread pool and await termination
+        """
+        AgentImpl.shutdown_executor()
+        # No explicit await for ThreadPoolExecutor's shutdown, as it's blocking
+
+    @staticmethod
+    def create_agent(account: 'Account', agent_type: type, amount: Decimal, iterations: int = -1, 
+                     force_direct_notify: bool = False) -> IAgentInterface:
+        """
+        Convenience method to create agents of a specific type.
+        """
+        if agent_type == DepositAgent:
+            return create_deposit_agent(account, amount, iterations, force_direct_notify)
+        elif agent_type == WithdrawAgent:
+            return create_withdraw_agent(account, amount, iterations, force_direct_notify)
+        elif agent_type == TransferAgent:
+            # For TransferAgent, we need a source and target account.
+            # This is a placeholder. In a real scenario, you'd get them from somewhere.
+            # For now, let's assume a dummy target account or raise an error.
+            # A more robust solution would involve a dedicated AccountManager.
+            raise ValueError("Source and target accounts must be provided for TransferAgent")
+        else:
+            raise ValueError(f"Unknown agent type: {agent_type.__name__}")
 
 
 class DepositAgent(AgentImpl):

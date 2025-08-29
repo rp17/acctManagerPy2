@@ -4,10 +4,12 @@ import time
 from decimal import Decimal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import random
-from account_model import (
-    Account, IAgent, AgentStatus, OverdrawException, 
-    InterruptedException, EventKind, ModelEvent
-)
+# Add the project root directory to Python path
+import sys
+import os
+project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, project_root)
+from model.account_model import Account, IAgent, AgentStatus, OverdrawException, InterruptedException, EventKind, ModelEvent
 
 
 class TestAccountModel(unittest.TestCase):
